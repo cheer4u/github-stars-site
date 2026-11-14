@@ -12,10 +12,11 @@
 
 ## 一键更新
 
-- 首页右上角 **Update** 按钮会打开 Actions 页面，点 **Run workflow** 即可拉取最新收藏；
+- 首页右上角 **Update** 按钮会打开 Actions 页面，点 **Run workflow → Run workflow** 确认即可拉取最新收藏；
 - 也可直接访问：<https://github.com/cheer4u/github-stars-site/actions/workflows/update-stars.yml>
 - 每天 UTC 03:17（北京时间 11:17）自动更新一次；
-- 数据更新后自动提交 `data.js`，GitHub Pages 随之自动重新部署；从 Actions 返回网站时会自动刷新。
+- 数据有变化时自动提交 `data.js` **并在同一次运行中直接部署 Pages**（GITHUB_TOKEN 的 push 不会触发其他工作流，所以部署由更新工作流显式调用）；
+- 从 Actions 返回网站时会自动刷新看到新数据。
 
 ## 本地刷新（Windows，可选）
 

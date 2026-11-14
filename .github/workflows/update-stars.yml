@@ -6,7 +6,9 @@ on:
     - cron: '17 3 * * *'   # UTC 03:17 = 北京时间 11:17
 
 permissions:
-  contents: write
+  contents: write   # 提交并推送新数据
+  pages: write      # 更新后自动部署 Pages
+  id-token: write
 
 concurrency:
   group: update-stars
@@ -15,6 +17,8 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,13 +37,23 @@ jobs:
         run: python3 build_data.py starred_raw.json
 
       - name: Commit and push if changed
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data.js
           if git diff --cached --quiet; then
             echo "No changes to commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "chore: 更新收藏数据"
             git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+  # 注意：GITHUB_TOKEN 的 push 不会触发其他工作流（GitHub 防循环机制），
+  # 所以这里必须显式调用 deploy 工作流，否则网站数据不会刷新。
+  deploy:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    uses: ./.github/workflows/deploy.yml

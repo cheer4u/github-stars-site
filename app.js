@@ -190,7 +190,14 @@
     var pendingReload = false;
     $('updateBtn').addEventListener('click', function () {
       pendingReload = true;
-      window.open(REPO_URL + '/actions/workflows/update-stars.yml', '_blank');
+      var url = REPO_URL + '/actions/workflows/update-stars.yml';
+      var win = window.open(url, '_blank');
+      showToast(
+        win
+          ? '已打开 GitHub Actions 页面，请点击 <b>Run workflow</b> → <b>Run workflow</b> 确认运行，完成后回来本页会自动刷新'
+          : '浏览器拦截了弹出窗口，请手动打开：<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>，点击 Run workflow 运行更新',
+        !win
+      );
     });
     window.addEventListener('focus', function () {
       if (pendingReload) {
@@ -198,6 +205,21 @@
         setTimeout(function () { location.reload(); }, 600);
       }
     });
+  }
+
+  function showToast(html, sticky) {
+    var t = document.getElementById('toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'toast';
+      document.body.appendChild(t);
+    }
+    t.innerHTML = html;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    if (!sticky) {
+      t._timer = setTimeout(function () { t.classList.remove('show'); }, 8000);
+    }
   }
 
   /* ---------- 初始化 ---------- */
