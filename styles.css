@@ -339,6 +339,23 @@ body {
 
 .spinner { width: 14px; height: 14px; }
 
+/* Chip count & extras */
+.filter-tag .count { color: var(--text-muted); margin-left: 6px; font-size: 0.75rem; }
+.filter-tag.active .count { color: rgba(0, 0, 0, 0.65); }
+.with-dot { display: inline-flex; align-items: center; gap: 6px; }
+.repo-meta { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.repo-home { color: var(--primary); text-decoration: none; font-size: 0.8125rem; white-space: nowrap; }
+.repo-home:hover { text-decoration: underline; }
+.repo-archived {
+  font-size: 0.6875rem;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+button.repo-topic { font-family: inherit; cursor: pointer; }
+
 /* Responsive */
 @media (max-width: 768px) {
   .main { grid-template-columns: 1fr; }
