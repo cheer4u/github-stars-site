@@ -57,3 +57,5 @@ jobs:
     needs: update
     if: needs.update.outputs.changed == 'true'
     uses: ./.github/workflows/deploy.yml
+    with:
+      ref: main   # 部署刚推送的最新数据，而不是触发时的旧 SHA

@@ -4,7 +4,13 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-  workflow_call:      # 允许被 update-stars 工作流调用，实现更新后自动部署
+  workflow_call:
+    inputs:
+      ref:
+        description: '要部署的 git ref（被 update-stars 调用时传 main 以包含刚推送的新数据）'
+        type: string
+        default: ''
+      # 允许被 update-stars 工作流调用，实现更新后自动部署
 
 permissions:
   contents: read
@@ -21,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
