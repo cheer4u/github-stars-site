@@ -22,10 +22,31 @@ foreach ($r in $raw) {
   }
 }
 
-$repos = $repos | Sort-Object { - $_.stars }
+$repos = $repos | Sort-Object { - $_.stars }, { $_.full_name }
+
+# 若收藏内容与现有 data.js 完全一致，则复用旧的 lastUpdated，避免无意义提交
+$lastUpdated = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+$dataJsPath = Join-Path $PSScriptRoot 'data.js'
+if (Test-Path $dataJsPath) {
+  try {
+    $txt = (Get-Content $dataJsPath -Raw).Trim()
+    $prefix = 'window.REPOS_DATA = '
+    if ($txt.StartsWith($prefix) -and $txt.EndsWith(';')) {
+      $old = ($txt.Substring($prefix.Length).TrimEnd(';')) | ConvertFrom-Json
+      $oldRepos = @($old.repos)
+      if ($oldRepos.Count -eq $repos.Count) {
+        $same = $true
+        for ($i = 0; $i -lt $repos.Count; $i++) {
+          if ($oldRepos[$i].full_name -ne $repos[$i].full_name -or $oldRepos[$i].stars -ne $repos[$i].stars) { $same = $false; break }
+        }
+        if ($same -and $old.lastUpdated) { $lastUpdated = $old.lastUpdated }
+      }
+    }
+  } catch { }
+}
 
 $payload = [ordered]@{
-  lastUpdated = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+  lastUpdated = $lastUpdated
   repoCount   = $repos.Count
   repos       = $repos
 }

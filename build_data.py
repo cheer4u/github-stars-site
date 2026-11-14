@@ -35,10 +35,25 @@ for r in items:
         "license": lic.get("spdx_id") or "",
     })
 
-repos.sort(key=lambda x: x["stars"], reverse=True)
+repos.sort(key=lambda x: (-x["stars"], x["full_name"]))
+
+last_updated = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+# 若收藏内容与现有 data.js 完全一致，则复用旧的 lastUpdated，
+# 避免纯时间戳差异导致的无意义提交（并发运行时还会造成 push 冲突）
+try:
+    with open("data.js", encoding="utf-8") as f:
+        txt = f.read().strip()
+    prefix = "window.REPOS_DATA = "
+    if txt.startswith(prefix) and txt.endswith(";"):
+        old = json.loads(txt[len(prefix):-1])
+        if old.get("repos") == repos:
+            last_updated = old.get("lastUpdated") or last_updated
+except FileNotFoundError:
+    pass
 
 payload = {
-    "lastUpdated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "lastUpdated": last_updated,
     "repoCount": len(repos),
     "repos": repos,
 }
