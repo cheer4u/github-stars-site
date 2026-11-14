@@ -1,0 +1,129 @@
+name: Update GitHub Stars Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      trigger_type:
+        description: 'Trigger type'
+        required: true
+        type: string
+        default: 'manual'
+  schedule:
+    - cron: '0 12 * * *'  # Daily at 12:00 UTC
+
+jobs:
+  update-stars:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for pushing to repo
+      # contents: write
+      # But since we only read, we need to add:
+      # We'll use a token to push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm init -y
+          npm install
+          
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(uname -m) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/githubcli.list > /dev/null
+          sudo apt update
+          sudo apt install gh
+          
+      - name: Authenticate with GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "${GITHUB_TOKEN}" | gh auth login --with-token
+          
+      - name: Fetch starred repos
+        run: |
+          gh api "/user/starred?per_page=100&page=1" > starred.json
+          # Get all pages
+          PAGE=2
+          while true; do
+            RESPONSE=$(gh api "/user/starred?per_page=100&page=$PAGE")
+            if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
+              break
+            fi
+            echo "$RESPONSE" >> starred.json
+            PAGE=$((PAGE + 1))
+          done
+          
+          # Convert to JSON format
+          python3 -c "
+import json
+with open('starred.json', 'r') as f:
+    data = json.load(f)
+all_repos = []
+for item in data:
+    all_repos.append({
+        'full_name': item['full_name'],
+        'language': item.get('language', 'Unknown'),
+        'stars': item.get('stargazers_count', 0),
+        'description': item.get('description', ''),
+        'topics': item.get('topics', []),
+        'url': item['html_url'],
+        'owner': item['owner']['login'],
+        'name': item['name'],
+        'pushed_at': item['pushed_at'],
+        'created_at': item['created_at'],
+        'archived': item.get('archived', False)
+    })
+    
+# Sort by stars descending
+all_repos.sort(key=lambda x: x['stars'], reverse=True)
+    
+# Group by topics for categories
+categories = {}
+for item in all_repos:
+    for topic in item['topics']:
+        topic = topic.strip()
+        if topic and topic != 'Unknown':
+            if topic not in categories:
+                categories[topic] = []
+            categories[topic].append(item)
+
+# Write to data.json format
+with open('data.json', 'w') as f:
+    import datetime
+    json.dump({
+        'lastUpdated': datetime.datetime.now().isoformat(),
+        'categories': categories,
+        'all': all_repos
+    }, f, ensure_ascii=False, indent=2)
+    
+print('Data written successfully')
+"
+          
+      - name: Commit and push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+          git add data.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: update GitHub stars data"
+          git push
